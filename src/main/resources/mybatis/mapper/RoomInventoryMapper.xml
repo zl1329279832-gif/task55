@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cn.mafangui.hotel.mapper.RoomInventoryMapper">
+
+    <resultMap id="BaseResultMap" type="cn.mafangui.hotel.entity.RoomInventory">
+        <id column="inventory_id" property="inventoryId" jdbcType="INTEGER"/>
+        <result column="type_id" property="typeId" jdbcType="INTEGER"/>
+        <result column="date" property="date" jdbcType="DATE"/>
+        <result column="total_count" property="totalCount" jdbcType="INTEGER"/>
+        <result column="reserved_count" property="reservedCount" jdbcType="INTEGER"/>
+        <result column="locked_count" property="lockedCount" jdbcType="INTEGER"/>
+        <result column="booked_count" property="bookedCount" jdbcType="INTEGER"/>
+        <result column="base_price" property="basePrice" jdbcType="DOUBLE"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        inventory_id, type_id, date, total_count, reserved_count, locked_count,
+        booked_count, base_price, create_time, update_time
+    </sql>
+
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Integer">
+        select
+        <include refid="Base_Column_List"/>
+        from room_inventory
+        where inventory_id = #{inventoryId,jdbcType=INTEGER}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from room_inventory
+    </select>
+
+    <select id="selectByTypeAndDate" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from room_inventory
+        where type_id = #{typeId,jdbcType=INTEGER}
+          and date = #{date,jdbcType=DATE}
+    </select>
+
+    <select id="selectByTypeAndDateRange" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from room_inventory
+        where type_id = #{typeId,jdbcType=INTEGER}
+          and date &gt;= #{startDate,jdbcType=DATE}
+          and date &lt;= #{endDate,jdbcType=DATE}
+        order by date asc
+    </select>
+
+    <select id="countRoomsByType" resultType="java.lang.Integer" parameterType="java.lang.Integer">
+        select count(room_id) from room_info
+        where type_id = #{typeId,jdbcType=INTEGER}
+          and room_status != 0
+    </select>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+        delete from room_inventory
+        where inventory_id = #{inventoryId,jdbcType=INTEGER}
+    </delete>
+
+    <insert id="insert" parameterType="cn.mafangui.hotel.entity.RoomInventory">
+        insert into room_inventory (type_id, date, total_count,
+            reserved_count, locked_count, booked_count,
+            base_price, create_time, update_time)
+        values (#{typeId,jdbcType=INTEGER}, #{date,jdbcType=DATE}, #{totalCount,jdbcType=INTEGER},
+            #{reservedCount,jdbcType=INTEGER}, #{lockedCount,jdbcType=INTEGER}, #{bookedCount,jdbcType=INTEGER},
+            #{basePrice,jdbcType=DOUBLE}, now(), now())
+    </insert>
+
+    <insert id="insertSelective" parameterType="cn.mafangui.hotel.entity.RoomInventory">
+        insert into room_inventory
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="typeId != null">type_id,</if>
+            <if test="date != null">date,</if>
+            <if test="totalCount != null">total_count,</if>
+            <if test="reservedCount != null">reserved_count,</if>
+            <if test="lockedCount != null">locked_count,</if>
+            <if test="bookedCount != null">booked_count,</if>
+            <if test="basePrice != null">base_price,</if>
+            create_time, update_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="typeId != null">#{typeId,jdbcType=INTEGER},</if>
+            <if test="date != null">#{date,jdbcType=DATE},</if>
+            <if test="totalCount != null">#{totalCount,jdbcType=INTEGER},</if>
+            <if test="reservedCount != null">#{reservedCount,jdbcType=INTEGER},</if>
+            <if test="lockedCount != null">#{lockedCount,jdbcType=INTEGER},</if>
+            <if test="bookedCount != null">#{bookedCount,jdbcType=INTEGER},</if>
+            <if test="basePrice != null">#{basePrice,jdbcType=DOUBLE},</if>
+            now(), now(),
+        </trim>
+    </insert>
+
+    <update id="updateByPrimaryKeySelective" parameterType="cn.mafangui.hotel.entity.RoomInventory">
+        update room_inventory
+        <set>
+            <if test="typeId != null">type_id = #{typeId,jdbcType=INTEGER},</if>
+            <if test="date != null">date = #{date,jdbcType=DATE},</if>
+            <if test="totalCount != null">total_count = #{totalCount,jdbcType=INTEGER},</if>
+            <if test="reservedCount != null">reserved_count = #{reservedCount,jdbcType=INTEGER},</if>
+            <if test="lockedCount != null">locked_count = #{lockedCount,jdbcType=INTEGER},</if>
+            <if test="bookedCount != null">booked_count = #{bookedCount,jdbcType=INTEGER},</if>
+            <if test="basePrice != null">base_price = #{basePrice,jdbcType=DOUBLE},</if>
+            update_time = now(),
+        </set>
+        where inventory_id = #{inventoryId,jdbcType=INTEGER}
+    </update>
+
+    <update id="updateByPrimaryKey" parameterType="cn.mafangui.hotel.entity.RoomInventory">
+        update room_inventory
+        set type_id = #{typeId,jdbcType=INTEGER},
+            date = #{date,jdbcType=DATE},
+            total_count = #{totalCount,jdbcType=INTEGER},
+            reserved_count = #{reservedCount,jdbcType=INTEGER},
+            locked_count = #{lockedCount,jdbcType=INTEGER},
+            booked_count = #{bookedCount,jdbcType=INTEGER},
+            base_price = #{basePrice,jdbcType=DOUBLE},
+            update_time = now()
+        where inventory_id = #{inventoryId,jdbcType=INTEGER}
+    </update>
+
+    <!-- Atomic: increment booked_count only if availability > 0 -->
+    <update id="incrementBookedCount">
+        update room_inventory
+        set booked_count = booked_count + 1,
+            update_time = now()
+        where type_id = #{typeId,jdbcType=INTEGER}
+          and date = #{date,jdbcType=DATE}
+          and (total_count - reserved_count - locked_count - booked_count) &gt; 0
+    </update>
+
+    <!-- Atomic: decrement booked_count only if booked_count > 0 -->
+    <update id="decrementBookedCount">
+        update room_inventory
+        set booked_count = booked_count - 1,
+            update_time = now()
+        where type_id = #{typeId,jdbcType=INTEGER}
+          and date = #{date,jdbcType=DATE}
+          and booked_count &gt; 0
+    </update>
+
+    <!-- Operator: set reserved_count with guard -->
+    <update id="updateReservedCount">
+        update room_inventory
+        set reserved_count = #{reservedCount,jdbcType=INTEGER},
+            update_time = now()
+        where type_id = #{typeId,jdbcType=INTEGER}
+          and date = #{date,jdbcType=DATE}
+          and (total_count - #{reservedCount,jdbcType=INTEGER} - locked_count - booked_count) &gt;= 0
+    </update>
+
+    <!-- Operator: set locked_count with guard -->
+    <update id="updateLockedCount">
+        update room_inventory
+        set locked_count = #{lockedCount,jdbcType=INTEGER},
+            update_time = now()
+        where type_id = #{typeId,jdbcType=INTEGER}
+          and date = #{date,jdbcType=DATE}
+          and (total_count - reserved_count - #{lockedCount,jdbcType=INTEGER} - booked_count) &gt;= 0
+    </update>
+
+    <!-- Operator: update total_count -->
+    <update id="updateTotalCount">
+        update room_inventory
+        set total_count = #{totalCount,jdbcType=INTEGER},
+            update_time = now()
+        where type_id = #{typeId,jdbcType=INTEGER}
+          and date = #{date,jdbcType=DATE}
+    </update>
+
+    <!-- Upsert: insert or update on duplicate key (for initialization) -->
+    <insert id="upsert" parameterType="cn.mafangui.hotel.entity.RoomInventory">
+        insert into room_inventory (type_id, date, total_count, reserved_count,
+            locked_count, booked_count, base_price, create_time, update_time)
+        values (#{typeId,jdbcType=INTEGER}, #{date,jdbcType=DATE},
+            #{totalCount,jdbcType=INTEGER}, #{reservedCount,jdbcType=INTEGER},
+            #{lockedCount,jdbcType=INTEGER}, #{bookedCount,jdbcType=INTEGER},
+            #{basePrice,jdbcType=DOUBLE}, now(), now())
+        on duplicate key update
+            total_count = #{totalCount,jdbcType=INTEGER},
+            base_price = #{basePrice,jdbcType=DOUBLE},
+            update_time = now()
+    </insert>
+
+</mapper>

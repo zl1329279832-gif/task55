@@ -8,6 +8,7 @@ import cn.mafangui.hotel.mapper.OrderMapper;
 import cn.mafangui.hotel.mapper.RoomMapper;
 import cn.mafangui.hotel.mapper.RoomTypeMapper;
 import cn.mafangui.hotel.service.OrderService;
+import cn.mafangui.hotel.service.RoomInventoryService;
 import cn.mafangui.hotel.service.RoomService;
 import cn.mafangui.hotel.service.RoomTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,8 @@ public class OrderServiceImpl implements OrderService {
     private OrderMapper orderMapper;
     @Autowired
     private RoomTypeService roomTypeService;
+    @Autowired
+    private RoomInventoryService roomInventoryService;
     @Autowired
     private RoomService roomService;
 
@@ -73,9 +76,16 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public int payOrder(int orderId) {
         Order order = orderMapper.selectByPrimaryKey(orderId);
-        if (order == null | order.getOrderStatus() != OrderStatus.UNPAID.getCode()) {
+        if (order == null || order.getOrderStatus() != OrderStatus.UNPAID.getCode()) {
             return -3;
         }
+        // Consume date-based inventory across all stay dates
+        if (!roomInventoryService.consumeInventory(
+                order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays())) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            return -2;
+        }
+        // Legacy rest counter for backward compatibility
         if (roomTypeService.updateRest(order.getRoomTypeId(),-1) != 1){
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             return -2;
@@ -96,13 +106,19 @@ public class OrderServiceImpl implements OrderService {
      * @return
      */
     @Override
+    @Transactional
     public int cancelOrder(int orderId) {
         Order order = orderMapper.selectByPrimaryKey(orderId);
         if (order == null ) return -3;
-        order.setOrderStatus(OrderStatus.WAS_CANCELED.getCode());
-        if (roomTypeService.updateRest(order.getRoomTypeId(),1) != 1){
-            return -2;
+        // Only release inventory if it was previously consumed (order was PAID)
+        if (order.getOrderStatus() == OrderStatus.PAID.getCode()) {
+            roomInventoryService.releaseInventory(
+                    order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays());
+            if (roomTypeService.updateRest(order.getRoomTypeId(),1) != 1){
+                return -2;
+            }
         }
+        order.setOrderStatus(OrderStatus.WAS_CANCELED.getCode());
         return orderMapper.updateByPrimaryKeySelective(order);
     }
 

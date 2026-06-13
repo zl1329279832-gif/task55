@@ -304,3 +304,22 @@ INSERT INTO `worker_info` VALUES ('7', 'operator', 'abc', 'abc', '韩格', '女'
 INSERT INTO `worker_info` VALUES ('8', 'admin', 'freee', 'e10adc3949ba59abbe56e057f20f883e', '谢建峰', '男', '18768124566', '184732@qq.com', '凤起路8号', '2019-11-27 20:18:17', '2019-11-27 20:18:17');
 INSERT INTO `worker_info` VALUES ('9', 'operator', 'www', 'e10adc3949ba59abbe56e057f20f883e', '放电管', '女', '234324354', '', '', '2019-11-28 20:31:55', '2019-11-28 20:31:55');
 INSERT INTO `worker_info` VALUES ('10', 'operator', 'qqq', 'e10adc3949ba59abbe56e057f20f883e', 'ds', '男', '32432534', '', '', '2019-11-28 20:32:31', '2019-11-28 20:32:31');
+
+-- ----------------------------
+-- Table structure for room_inventory
+-- ----------------------------
+DROP TABLE IF EXISTS `room_inventory`;
+CREATE TABLE `room_inventory` (
+  `inventory_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '库存ID',
+  `type_id` int(11) NOT NULL COMMENT '房型ID',
+  `date` date NOT NULL COMMENT '日期',
+  `total_count` int(11) NOT NULL DEFAULT '0' COMMENT '总房间数',
+  `reserved_count` int(11) NOT NULL DEFAULT '0' COMMENT '预留数量',
+  `locked_count` int(11) NOT NULL DEFAULT '0' COMMENT '锁定数量(维修)',
+  `booked_count` int(11) NOT NULL DEFAULT '0' COMMENT '已预订数量',
+  `base_price` double DEFAULT NULL COMMENT '当日基础价格',
+  `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`inventory_id`),
+  UNIQUE KEY `uqe_type_date` (`type_id`, `date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='房间库存表';

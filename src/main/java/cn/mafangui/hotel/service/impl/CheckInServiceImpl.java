@@ -50,7 +50,6 @@ public class CheckInServiceImpl implements CheckInService {
         Room r = roomService.selectById(roomService.inRoom(order.getRoomTypeId()));
         checkIn.setRoomId(r.getRoomId());
         checkIn.setRoomNumber(r.getRoomNumber());
-        roomTypeService.updateRest(rt.getTypeId(),-1);
         order.setOrderStatus(OrderStatus.CHECK_IN.getCode());
         orderService.update(order);
         checkInMapper.insert(checkIn);

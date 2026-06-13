@@ -154,4 +154,19 @@ IF NOT EXISTS `order_type` (
 	PRIMARY KEY(`type_id`)
 ) COMMENT '预订方式表';
 
-
+-- 10房间库存表
+CREATE TABLE
+IF NOT EXISTS `room_inventory` (
+	`inventory_id` int not null auto_increment COMMENT '库存ID',
+	`type_id` int not null COMMENT '房型ID',
+	`date` date not null COMMENT '日期',
+	`total_count` int not null DEFAULT '0' COMMENT '总房间数',
+	`reserved_count` int not null DEFAULT '0' COMMENT '预留数量',
+	`locked_count` int not null DEFAULT '0' COMMENT '锁定数量(维修)',
+	`booked_count` int not null DEFAULT '0' COMMENT '已预订数量',
+	`base_price` double DEFAULT NULL COMMENT '当日基础价格',
+	`create_time` TIMESTAMP not null DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+	`update_time` TIMESTAMP null ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+	PRIMARY KEY (`inventory_id`),
+	UNIQUE KEY `uqe_type_date` (`type_id`, `date`)
+) COMMENT '房间库存表';
