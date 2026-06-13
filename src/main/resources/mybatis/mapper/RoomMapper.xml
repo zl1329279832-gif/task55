@@ -157,6 +157,13 @@
     </set>
     where room_id = #{roomId,jdbcType=INTEGER}
   </update>
+  <update id="updateStatusByIdAndCurrentStatus">
+    update room_info
+    set room_status = #{newStatus,jdbcType=INTEGER},
+        update_time = now()
+    where room_id = #{roomId,jdbcType=INTEGER}
+      and room_status = #{currentStatus,jdbcType=INTEGER}
+  </update>
   <update id="updateByPrimaryKey" parameterType="cn.mafangui.hotel.entity.Room">
     update room_info
     set room_number = #{roomNumber,jdbcType=VARCHAR},

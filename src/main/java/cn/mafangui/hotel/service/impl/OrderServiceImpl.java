@@ -76,7 +76,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public int payOrder(int orderId) {
         Order order = orderMapper.selectByPrimaryKey(orderId);
-        if (order == null | order.getOrderStatus() != OrderStatus.UNPAID.getCode()) {
+        if (order == null || order.getOrderStatus() != OrderStatus.UNPAID.getCode()) {
             return -3;
         }
         // 按日期占用房态库存（跨天入住逐天占用）
@@ -110,16 +110,29 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public int cancelOrder(int orderId) {
         Order order = orderMapper.selectByPrimaryKey(orderId);
-        if (order == null ) return -3;
-        // 释放按日期占用的房态库存
-        if (order.getOrderDate() != null && order.getOrderDays() != null && order.getOrderDays() > 0) {
-            roomInventoryService.releaseForCancel(order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays());
+        if (order == null) return -3;
+        int currentStatus = order.getOrderStatus();
+        // 只有 UNPAID 和 PAID 可以取消
+        if (currentStatus != OrderStatus.UNPAID.getCode()
+                && currentStatus != OrderStatus.PAID.getCode()) {
+            return -3;
+        }
+        // 只有 PAID 才有占用库存和 rest，需要释放
+        if (currentStatus == OrderStatus.PAID.getCode()) {
+            if (order.getOrderDate() != null && order.getOrderDays() != null && order.getOrderDays() > 0) {
+                roomInventoryService.releaseForCancel(order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays());
+            }
+            if (roomTypeService.updateRest(order.getRoomTypeId(), 1) != 1) {
+                TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+                return -2;
+            }
         }
         order.setOrderStatus(OrderStatus.WAS_CANCELED.getCode());
-        if (roomTypeService.updateRest(order.getRoomTypeId(),1) != 1){
-            return -2;
+        if (orderMapper.updateByPrimaryKeySelective(order) != 1) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            return 0;
         }
-        return orderMapper.updateByPrimaryKeySelective(order);
+        return 1;
     }
 
     @Override

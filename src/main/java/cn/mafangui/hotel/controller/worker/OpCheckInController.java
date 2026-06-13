@@ -23,7 +23,11 @@ public class OpCheckInController {
         checkIn.setPeoCount(peoCount);
         checkIn.setPersons(persons);
         checkIn.setIds(ids);
-        return ResponseTool.success(checkInService.checkIn(checkIn));
+        Object result = checkInService.checkIn(checkIn);
+        if (result == null) {
+            return ResponseTool.failed("入住失败：订单状态不允许或无可用房间");
+        }
+        return ResponseTool.success(result);
     }
 
     @RequestMapping(value = "/out")

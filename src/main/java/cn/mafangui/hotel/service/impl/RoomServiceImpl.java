@@ -65,18 +65,22 @@ public class RoomServiceImpl implements RoomService {
     }
 
     /**
-     * 房间入住
+     * 房间入住 — CAS 防并发分配同一房间
      * @param typeId
-     * @return
+     * @return roomId or -1 if no available room
      */
     @Override
+    @Transactional
     public int inRoom(int typeId) {
-        Room room = roomMapper.randomSelectByTypeAndStatus(typeId,RoomStatus.AVAILABLE.getCode());
-        System.out.println(room);
-        room.setRoomStatus(RoomStatus.IN_USE.getCode());
-        if (roomMapper.updateByPrimaryKeySelective(room) <= 0)
-            return -1;
-        else return room.getRoomId();
+        for (int attempt = 0; attempt < 3; attempt++) {
+            Room room = roomMapper.randomSelectByTypeAndStatus(typeId, RoomStatus.AVAILABLE.getCode());
+            if (room == null) return -1;
+            int affected = roomMapper.updateStatusByIdAndCurrentStatus(
+                    room.getRoomId(), RoomStatus.IN_USE.getCode(), RoomStatus.AVAILABLE.getCode());
+            if (affected == 1) return room.getRoomId();
+            // affected==0: another thread took this room, retry with a different one
+        }
+        return -1;
     }
 
     @Override

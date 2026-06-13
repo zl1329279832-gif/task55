@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
 import java.util.List;
 
 @Service
@@ -49,15 +48,22 @@ public class CheckInServiceImpl implements CheckInService {
     @Transactional
     public Room checkIn(CheckIn checkIn) {
         Order order = orderService.selectById(checkIn.getOrderId());
+        if (order == null || order.getOrderStatus() != OrderStatus.PAID.getCode()) {
+            return null;
+        }
         RoomType rt = roomTypeService.selectById(order.getRoomTypeId());
         // 入住：将 ordered 转为 occupied（不额外消耗库存）
         if (order.getOrderDate() != null && order.getOrderDays() != null && order.getOrderDays() > 0) {
             roomInventoryService.occupyForCheckIn(order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays());
         }
-        Room r = roomService.selectById(roomService.inRoom(order.getRoomTypeId()));
+        int roomId = roomService.inRoom(order.getRoomTypeId());
+        if (roomId < 0) {
+            return null;
+        }
+        Room r = roomService.selectById(roomId);
         checkIn.setRoomId(r.getRoomId());
         checkIn.setRoomNumber(r.getRoomNumber());
-        roomTypeService.updateRest(rt.getTypeId(),-1);
+        // rest 在 payOrder 时已扣减，此处不再重复扣减
         order.setOrderStatus(OrderStatus.CHECK_IN.getCode());
         orderService.update(order);
         checkInMapper.insert(checkIn);
@@ -73,6 +79,7 @@ public class CheckInServiceImpl implements CheckInService {
      * @return
      */
     @Override
+    @Transactional
     public int checkOut(String  roomNumber){
         Room r = roomService.selectByNumber(roomNumber);
         RoomType ty = roomTypeService.selectById(r.getTypeId());

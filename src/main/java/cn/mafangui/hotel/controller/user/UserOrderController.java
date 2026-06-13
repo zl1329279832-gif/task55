@@ -50,7 +50,7 @@ public class UserOrderController {
         Order order = new Order(orderTypeId,orderType,userId,name,phone,roomTypeId,
                 roomType,orderDate,orderDays, OrderStatus.UNPAID.getCode(),orderCost);
         int re = orderService.addOrder(order);
-        if(re!=1) ResponseTool.failed(MsgType.FAILED);
+        if(re!=1) return ResponseTool.failed(MsgType.FAILED);
         return ResponseTool.success(MsgType.SUCCESS);
     }
 
@@ -64,7 +64,7 @@ public class UserOrderController {
     public AjaxResult deleteOrderByUser(int orderId){
         Order order = new Order(orderId,OrderStatus.WAS_DELETED.getCode());
         int re =  orderService.update(order);
-        if(re!=1) ResponseTool.failed(MsgType.FAILED);
+        if(re!=1) return ResponseTool.failed(MsgType.FAILED);
         return ResponseTool.success(MsgType.SUCCESS);
     }
 
@@ -79,7 +79,7 @@ public class UserOrderController {
         User user = userService.selectByUsernameAndPassword(username,password);
         if(user==null) return ResponseTool.failed("密码错误");
         int re = orderService.payOrder(orderId);
-        if(re!=1) ResponseTool.failed(MsgType.FAILED);
+        if(re!=1) return ResponseTool.failed(MsgType.FAILED);
         return ResponseTool.success(MsgType.SUCCESS);
     }
 
@@ -91,7 +91,7 @@ public class UserOrderController {
     @RequestMapping(value = "/cancel")
     public AjaxResult cancelOrder(int orderId){
         int re = orderService.cancelOrder(orderId);
-        if(re!=1) ResponseTool.failed(MsgType.FAILED);
+        if(re!=1) return ResponseTool.failed(MsgType.FAILED);
         return ResponseTool.success(MsgType.SUCCESS);
     }
 

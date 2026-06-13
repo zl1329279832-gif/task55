@@ -29,4 +29,8 @@ public interface RoomMapper {
     List<Room> selectAll();
 
     Room randomSelectByTypeAndStatus(@Param("typeId") Integer typeId,@Param("roomStatus") Integer roomStatus);
+
+    int updateStatusByIdAndCurrentStatus(@Param("roomId") int roomId,
+                                         @Param("newStatus") int newStatus,
+                                         @Param("currentStatus") int currentStatus);
 }
