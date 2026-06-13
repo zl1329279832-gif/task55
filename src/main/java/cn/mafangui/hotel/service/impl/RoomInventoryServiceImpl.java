@@ -23,7 +23,8 @@ import java.util.List;
 public class RoomInventoryServiceImpl implements RoomInventoryService {
 
     private static final int MAX_RETRY = 3;
-    private static final SimpleDateFormat DATE_FMT = new SimpleDateFormat("yyyy-MM-dd");
+    private static final ThreadLocal<SimpleDateFormat> DATE_FMT = ThreadLocal.withInitial(
+            () -> new SimpleDateFormat("yyyy-MM-dd"));
 
     @Autowired
     private RoomInventoryMapper inventoryMapper;
@@ -58,7 +59,7 @@ public class RoomInventoryServiceImpl implements RoomInventoryService {
         List<DailyAvailability> result = new ArrayList<>();
         for (RoomInventory inv : rows) {
             DailyAvailability da = new DailyAvailability();
-            da.setDate(DATE_FMT.format(inv.getInvDate()));
+            da.setDate(DATE_FMT.get().format(inv.getInvDate()));
             da.setTotalRooms(inv.getTotal() != null ? inv.getTotal() : 0);
             da.setAvailableRooms(inv.getAvailable());
             da.setReservedRooms(inv.getReserved() != null ? inv.getReserved() : 0);

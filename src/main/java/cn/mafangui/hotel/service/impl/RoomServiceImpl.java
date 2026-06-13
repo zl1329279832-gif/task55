@@ -66,13 +66,15 @@ public class RoomServiceImpl implements RoomService {
 
     /**
      * 房间入住
+     * 使用 FOR UPDATE 行锁，防止并发入住分配到同一物理房间
      * @param typeId
-     * @return
+     * @return roomId 成功, -1 无可用房间
      */
     @Override
+    @Transactional
     public int inRoom(int typeId) {
-        Room room = roomMapper.randomSelectByTypeAndStatus(typeId,RoomStatus.AVAILABLE.getCode());
-        System.out.println(room);
+        Room room = roomMapper.selectForUpdateByTypeAndStatus(typeId, RoomStatus.AVAILABLE.getCode());
+        if (room == null) return -1;
         room.setRoomStatus(RoomStatus.IN_USE.getCode());
         if (roomMapper.updateByPrimaryKeySelective(room) <= 0)
             return -1;
@@ -80,6 +82,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional
     public int outRoom(int typeId) {
         Room room = roomMapper.randomSelectByTypeAndStatus(typeId,RoomStatus.IN_USE.getCode());
         if (room == null) return -1;

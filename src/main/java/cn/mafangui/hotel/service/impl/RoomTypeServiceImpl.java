@@ -55,14 +55,14 @@ public class RoomTypeServiceImpl implements RoomTypeService {
     @Override
     public int addRest(int typeId) {
         RoomType rt =roomTypeMapper.selectByPrimaryKey(typeId);
-        rt.setTypeId(rt.getRest() +1);
+        rt.setRest(rt.getRest() +1);
         return roomTypeMapper.updateByPrimaryKeySelective(rt);
     }
 
     @Override
     public int minusRest(int typeId) {
         RoomType rt =roomTypeMapper.selectByPrimaryKey(typeId);
-        rt.setTypeId(rt.getRest() -1);
+        rt.setRest(rt.getRest() -1);
         return roomTypeMapper.updateByPrimaryKeySelective(rt);
     }
 

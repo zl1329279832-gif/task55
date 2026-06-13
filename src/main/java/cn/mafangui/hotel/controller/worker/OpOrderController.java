@@ -66,7 +66,7 @@ public class OpOrderController {
     @RequestMapping(method = RequestMethod.POST,value = "/pay")
     public AjaxResult payOrder(int orderId){
         int re = orderService.payOrder(orderId);
-        if(re!=1) return ResponseTool.failed(MsgType.FAILED);
+        if(re!=1) return ResponseTool.failed(re == -2 ? "房量不足" : re == -3 ? "订单状态异常" : "支付失败");
         return ResponseTool.success("支付成功.");
     }
 
@@ -77,8 +77,8 @@ public class OpOrderController {
      */
     @RequestMapping(value = "/cancel")
     public AjaxResult cancelOrder(int orderId){
-        int re= orderService.cancelOrder(orderId);
-        if(re!=1) return ResponseTool.failed(MsgType.FAILED);
+        int re = orderService.cancelOrder(orderId);
+        if(re!=1) return ResponseTool.failed(re == -3 ? "订单状态不允许取消" : "取消失败");
         return ResponseTool.success("取消成功.");
     }
 

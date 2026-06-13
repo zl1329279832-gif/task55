@@ -23,7 +23,11 @@ public class OpCheckInController {
         checkIn.setPeoCount(peoCount);
         checkIn.setPersons(persons);
         checkIn.setIds(ids);
-        return ResponseTool.success(checkInService.checkIn(checkIn));
+        cn.mafangui.hotel.entity.Room room = checkInService.checkIn(checkIn);
+        if (room == null) {
+            return ResponseTool.failed("入住失败：订单状态异常、已入住或无可用房间");
+        }
+        return ResponseTool.success(room);
     }
 
     @RequestMapping(value = "/out")

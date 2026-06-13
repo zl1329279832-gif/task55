@@ -66,17 +66,23 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 订单支付
-     *  1.更改订单状态 -3
-     *  2.修改房型余量 -2
-     *  3.修改房间状态 -1
+     *  1.原子更新订单状态 UNPAID→PAID（CAS，防止并发重复支付）
+     *  2.占用日期库存
+     *  3.修改房型余量
      * @param orderId
-     * @return
+     * @return 1=成功, -2=库存不足, -3=订单不存在或状态非法
      */
     @Override
     @Transactional
     public int payOrder(int orderId) {
+        // 先读取订单用于后续库存操作
         Order order = orderMapper.selectByPrimaryKey(orderId);
-        if (order == null | order.getOrderStatus() != OrderStatus.UNPAID.getCode()) {
+        if (order == null || order.getOrderStatus() != OrderStatus.UNPAID.getCode()) {
+            return -3;
+        }
+        // 原子 CAS：UNPAID→PAID，并发时只有一个线程能成功
+        int casResult = orderMapper.casUpdateStatus(orderId, OrderStatus.UNPAID.getCode(), OrderStatus.PAID.getCode());
+        if (casResult != 1) {
             return -3;
         }
         // 按日期占用房态库存（跨天入住逐天占用）
@@ -91,34 +97,36 @@ public class OrderServiceImpl implements OrderService {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             return -2;
         }
-        order.setOrderStatus(OrderStatus.PAID.getCode());
-        if (orderMapper.updateByPrimaryKeySelective(order) != 1){
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            return 0;
-        }
         return 1;
     }
 
     /**
      * 取消订单
-     * 1. 更改订单状态 -3
-     * 2. 修改房型余量（已付款）-2
+     * 仅允许从 UNPAID 或 PAID 状态取消。
+     * PAID 订单取消时释放日期库存和房型余量；UNPAID 订单仅改状态。
      * @param orderId
-     * @return
+     * @return 1=成功, -2=更新失败, -3=订单不存在或状态不允许取消
      */
     @Override
     @Transactional
     public int cancelOrder(int orderId) {
         Order order = orderMapper.selectByPrimaryKey(orderId);
-        if (order == null ) return -3;
-        // 释放按日期占用的房态库存
-        if (order.getOrderDate() != null && order.getOrderDays() != null && order.getOrderDays() > 0) {
-            roomInventoryService.releaseForCancel(order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays());
+        if (order == null) return -3;
+        // 仅 UNPAID 或 PAID 订单可取消
+        int status = order.getOrderStatus();
+        if (status != OrderStatus.UNPAID.getCode() && status != OrderStatus.PAID.getCode()) {
+            return -3;
+        }
+        // 仅 PAID 订单才需要释放库存（UNPAID 从未占用过库存）
+        if (status == OrderStatus.PAID.getCode()) {
+            if (order.getOrderDate() != null && order.getOrderDays() != null && order.getOrderDays() > 0) {
+                roomInventoryService.releaseForCancel(order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays());
+            }
+            if (roomTypeService.updateRest(order.getRoomTypeId(), 1) != 1) {
+                return -2;
+            }
         }
         order.setOrderStatus(OrderStatus.WAS_CANCELED.getCode());
-        if (roomTypeService.updateRest(order.getRoomTypeId(),1) != 1){
-            return -2;
-        }
         return orderMapper.updateByPrimaryKeySelective(order);
     }
 

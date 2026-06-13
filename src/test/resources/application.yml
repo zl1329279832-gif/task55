@@ -1,0 +1,21 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /ho-api
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:hotel;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    initialization-mode: never
+  h2:
+    console:
+      enabled: false
+
+mybatis:
+  type-aliases-package: cn.mafangui.hotel.entity
+  mapper-locations: classpath*:mybatis/mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true

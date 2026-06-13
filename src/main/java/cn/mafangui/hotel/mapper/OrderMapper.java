@@ -31,5 +31,6 @@ public interface OrderMapper {
 
     List<Order> selectAllByUser(@Param("userId") Integer userId,@Param("orderStatus") Integer orderStatus);
 
+    int casUpdateStatus(@Param("orderId") Integer orderId, @Param("fromStatus") Integer fromStatus, @Param("toStatus") Integer toStatus);
 
 }

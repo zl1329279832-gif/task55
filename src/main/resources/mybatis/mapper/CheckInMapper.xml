@@ -32,6 +32,13 @@
     from check_in
     where room_number = #{roomNumber,jdbcType=VARCHAR} order by check_in_time desc limit 1
   </select>
+  <select id="selectActiveByOrderId" parameterType="Integer" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from check_in
+    where order_id = #{orderId,jdbcType=INTEGER} and check_out_time is null
+    limit 1
+  </select>
   <select id="selectAll"  resultMap="BaseResultMap">
     select
     <include refid="Base_Column_List" />

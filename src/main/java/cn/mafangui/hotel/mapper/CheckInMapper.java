@@ -1,6 +1,7 @@
 package cn.mafangui.hotel.mapper;
 
 import cn.mafangui.hotel.entity.CheckIn;
+import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -17,6 +18,8 @@ public interface CheckInMapper {
     CheckIn selectByPrimaryKey(Integer checkInId);
 
     CheckIn selectLatestByRoomNumber(String roomNumber);
+
+    CheckIn selectActiveByOrderId(@Param("orderId") Integer orderId);
 
     int updateByRoomNumber(String roomNumber);
 
