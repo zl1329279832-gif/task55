@@ -9,6 +9,7 @@ import cn.mafangui.hotel.enums.RoomStatus;
 import cn.mafangui.hotel.mapper.CheckInMapper;
 import cn.mafangui.hotel.service.CheckInService;
 import cn.mafangui.hotel.service.OrderService;
+import cn.mafangui.hotel.service.RoomInventoryService;
 import cn.mafangui.hotel.service.RoomService;
 import cn.mafangui.hotel.service.RoomTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,8 @@ public class CheckInServiceImpl implements CheckInService {
     private RoomTypeService roomTypeService;
     @Autowired
     private RoomService roomService;
+    @Autowired
+    private RoomInventoryService roomInventoryService;
 
     @Override
     public int insert(CheckIn checkIn) {
@@ -47,6 +50,10 @@ public class CheckInServiceImpl implements CheckInService {
     public Room checkIn(CheckIn checkIn) {
         Order order = orderService.selectById(checkIn.getOrderId());
         RoomType rt = roomTypeService.selectById(order.getRoomTypeId());
+        // 入住：将 ordered 转为 occupied（不额外消耗库存）
+        if (order.getOrderDate() != null && order.getOrderDays() != null && order.getOrderDays() > 0) {
+            roomInventoryService.occupyForCheckIn(order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays());
+        }
         Room r = roomService.selectById(roomService.inRoom(order.getRoomTypeId()));
         checkIn.setRoomId(r.getRoomId());
         checkIn.setRoomNumber(r.getRoomNumber());
@@ -70,6 +77,13 @@ public class CheckInServiceImpl implements CheckInService {
         Room r = roomService.selectByNumber(roomNumber);
         RoomType ty = roomTypeService.selectById(r.getTypeId());
         CheckIn checkIn = checkInMapper.selectLatestByRoomNumber(roomNumber);
+        // 退房：释放 occupied 库存
+        if (checkIn != null && checkIn.getOrderId() != null) {
+            Order order = orderService.selectById(checkIn.getOrderId());
+            if (order != null && order.getOrderDate() != null && order.getOrderDays() != null && order.getOrderDays() > 0) {
+                roomInventoryService.releaseForCheckOut(order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays());
+            }
+        }
         r.setRoomStatus(RoomStatus.AVAILABLE.getCode());
         if(roomService.update(r) <=0 )return -3;
         if (roomTypeService.updateRest(ty.getTypeId(),1)<=0)return -2;

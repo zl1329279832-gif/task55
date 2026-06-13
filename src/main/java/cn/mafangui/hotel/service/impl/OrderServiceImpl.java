@@ -8,6 +8,7 @@ import cn.mafangui.hotel.mapper.OrderMapper;
 import cn.mafangui.hotel.mapper.RoomMapper;
 import cn.mafangui.hotel.mapper.RoomTypeMapper;
 import cn.mafangui.hotel.service.OrderService;
+import cn.mafangui.hotel.service.RoomInventoryService;
 import cn.mafangui.hotel.service.RoomService;
 import cn.mafangui.hotel.service.RoomTypeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,8 @@ public class OrderServiceImpl implements OrderService {
     private RoomTypeService roomTypeService;
     @Autowired
     private RoomService roomService;
+    @Autowired
+    private RoomInventoryService roomInventoryService;
 
     @Override
     public int insert(Order order) {
@@ -76,6 +79,14 @@ public class OrderServiceImpl implements OrderService {
         if (order == null | order.getOrderStatus() != OrderStatus.UNPAID.getCode()) {
             return -3;
         }
+        // 按日期占用房态库存（跨天入住逐天占用）
+        if (order.getOrderDate() != null && order.getOrderDays() != null && order.getOrderDays() > 0) {
+            int invResult = roomInventoryService.occupyForOrder(order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays());
+            if (invResult != 1) {
+                TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+                return -2;
+            }
+        }
         if (roomTypeService.updateRest(order.getRoomTypeId(),-1) != 1){
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             return -2;
@@ -96,9 +107,14 @@ public class OrderServiceImpl implements OrderService {
      * @return
      */
     @Override
+    @Transactional
     public int cancelOrder(int orderId) {
         Order order = orderMapper.selectByPrimaryKey(orderId);
         if (order == null ) return -3;
+        // 释放按日期占用的房态库存
+        if (order.getOrderDate() != null && order.getOrderDays() != null && order.getOrderDays() > 0) {
+            roomInventoryService.releaseForCancel(order.getRoomTypeId(), order.getOrderDate(), order.getOrderDays());
+        }
         order.setOrderStatus(OrderStatus.WAS_CANCELED.getCode());
         if (roomTypeService.updateRest(order.getRoomTypeId(),1) != 1){
             return -2;

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.mafangui.hotel.mapper.RoomInventoryMapper">
+
+    <resultMap id="inventoryResultMap" type="cn.mafangui.hotel.entity.RoomInventory">
+        <id     column="id"           property="id"/>
+        <result column="type_id"      property="typeId"/>
+        <result column="inv_date"     property="invDate"/>
+        <result column="total"        property="total"/>
+        <result column="ordered"      property="ordered"/>
+        <result column="occupied"     property="occupied"/>
+        <result column="reserved"     property="reserved"/>
+        <result column="maintenance"  property="maintenance"/>
+        <result column="price"        property="price"/>
+        <result column="version"      property="version"/>
+        <result column="create_time"  property="createTime"/>
+        <result column="update_time"  property="updateTime"/>
+    </resultMap>
+
+    <!-- ==================== 查询 ==================== -->
+
+    <select id="selectByTypeAndDate" resultMap="inventoryResultMap">
+        SELECT * FROM room_inventory
+        WHERE type_id = #{typeId} AND inv_date = #{invDate}
+    </select>
+
+    <select id="selectByTypeAndDateRange" resultMap="inventoryResultMap">
+        SELECT * FROM room_inventory
+        WHERE type_id = #{typeId}
+          AND inv_date &gt;= #{startDate}
+          AND inv_date &lt;  #{endDate}
+        ORDER BY inv_date ASC
+    </select>
+
+    <!-- ==================== 插入 ==================== -->
+
+    <insert id="insertIgnore" parameterType="cn.mafangui.hotel.entity.RoomInventory">
+        INSERT IGNORE INTO room_inventory
+            (type_id, inv_date, total, ordered, occupied, reserved, maintenance, price, version)
+        VALUES
+            (#{typeId}, #{invDate}, #{total}, 0, 0, 0, 0, #{price}, 0)
+    </insert>
+
+    <!-- ==================== 订单占用 / 释放 ==================== -->
+
+    <!--
+      增加 ordered（下单支付）。
+      Guard: 可订量 >= 1，version 匹配。
+    -->
+    <update id="incrementOrdered">
+        UPDATE room_inventory
+        SET ordered = ordered + 1,
+            version = version + 1,
+            update_time = NOW()
+        WHERE type_id  = #{typeId}
+          AND inv_date = #{invDate}
+          AND version  = #{version}
+          AND (total - ordered - occupied - reserved - maintenance) &gt;= 1
+    </update>
+
+    <!-- 减少 ordered（取消订单释放）。Guard: ordered >= 1 -->
+    <update id="decrementOrdered">
+        UPDATE room_inventory
+        SET ordered = ordered - 1,
+            version = version + 1,
+            update_time = NOW()
+        WHERE type_id  = #{typeId}
+          AND inv_date = #{invDate}
+          AND version  = #{version}
+          AND ordered &gt;= 1
+    </update>
+
+    <!-- ==================== 入住 / 退房 ==================== -->
+
+    <!--
+      ordered -> occupied（入住转换）。
+      Guard: ordered >= 1。净效果：可订量不变。
+    -->
+    <update id="convertOrderedToOccupied">
+        UPDATE room_inventory
+        SET ordered  = ordered - 1,
+            occupied = occupied + 1,
+            version  = version + 1,
+            update_time = NOW()
+        WHERE type_id  = #{typeId}
+          AND inv_date = #{invDate}
+          AND version  = #{version}
+          AND ordered &gt;= 1
+    </update>
+
+    <!-- 减少 occupied（退房释放）。Guard: occupied >= 1 -->
+    <update id="decrementOccupied">
+        UPDATE room_inventory
+        SET occupied = occupied - 1,
+            version  = version + 1,
+            update_time = NOW()
+        WHERE type_id  = #{typeId}
+          AND inv_date = #{invDate}
+          AND version  = #{version}
+          AND occupied &gt;= 1
+    </update>
+
+    <!-- ==================== 操作员操作 ==================== -->
+
+    <!-- 设置保留房量（绝对值）。Guard: 设置后仍可订量 >= 0 -->
+    <update id="updateReserved">
+        UPDATE room_inventory
+        SET reserved = #{reserved},
+            version  = version + 1,
+            update_time = NOW()
+        WHERE type_id  = #{typeId}
+          AND inv_date = #{invDate}
+          AND version  = #{version}
+          AND #{reserved} &gt;= 0
+          AND (total - ordered - occupied - #{reserved} - maintenance) &gt;= 0
+    </update>
+
+    <!-- 设置维修锁房（绝对值）。Guard: 设置后仍可订量 >= 0 -->
+    <update id="updateMaintenance">
+        UPDATE room_inventory
+        SET maintenance = #{maintenance},
+            version  = version + 1,
+            update_time = NOW()
+        WHERE type_id  = #{typeId}
+          AND inv_date = #{invDate}
+          AND version  = #{version}
+          AND #{maintenance} &gt;= 0
+          AND (total - ordered - occupied - reserved - #{maintenance}) &gt;= 0
+    </update>
+
+    <!-- 设置当日价格覆盖 -->
+    <update id="updatePrice">
+        UPDATE room_inventory
+        SET price   = #{price},
+            version = version + 1,
+            update_time = NOW()
+        WHERE type_id  = #{typeId}
+          AND inv_date = #{invDate}
+          AND version  = #{version}
+    </update>
+
+    <!-- 更新 total（房型房间数变动时同步） -->
+    <update id="updateTotal">
+        UPDATE room_inventory
+        SET total   = #{total},
+            version = version + 1,
+            update_time = NOW()
+        WHERE type_id  = #{typeId}
+          AND inv_date = #{invDate}
+          AND version  = #{version}
+    </update>
+
+</mapper>
